@@ -1,0 +1,11 @@
+- name: Send message to Discord
+  uri:
+    url: "https://discordapp.com/api/webhooks/......" # Change this to your discord webhook URL
+    method: POST
+    body_format: json
+    body: '{"content": "{{ discord_message }}"}'
+    status_code: [200, 204]
+    headers:
+      Content-Type: "application/json"
+  vars:
+    discord_message: "Default message"
