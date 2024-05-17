@@ -1,3 +1,3 @@
 # opensourcepulse.io
 
-Only discussions for the website
+Usefull files and examples used on the website
