@@ -1,0 +1,56 @@
+---
+- name: Update Linux Servers
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: Update and upgrade apt packages (Debian/Ubuntu)
+      apt:
+        update_cache: yes
+        upgrade: yes
+      when: ansible_os_family == "Debian"
+      register: apt_upgrade
+
+    - name: Update and upgrade yum packages (RedHat/CentOS)
+      yum:
+        name: '*'
+        state: latest
+      when: ansible_os_family == "RedHat"
+      register: yum_upgrade
+
+    - name: Check if reboot is required (Debian/Ubuntu)
+      stat:
+        path: /var/run/reboot-required
+      register: reboot_required
+      when: ansible_os_family == "Debian"
+
+    - name: Notify if reboot is required (Debian/Ubuntu)
+      include_tasks: discord_notify.yml
+      vars:
+        discord_message: "Server {{ inventory_hostname }} ({{ ansible_host }}) requires a reboot after updates."
+      when: ansible_os_family == "Debian" and reboot_required.stat.exists
+
+    - name: Notify if updates installed but no reboot required (Debian/Ubuntu)
+      include_tasks: discord_notify.yml
+      vars:
+        discord_message: "Server {{ inventory_hostname }} ({{ ansible_host }}) updated successfully. No reboot required."
+      when: ansible_os_family == "Debian" and apt_upgrade.changed and not reboot_required.stat.exists
+
+    - name: Notify if no updates installed/available (Debian/Ubuntu)
+      include_tasks: discord_notify.yml
+      vars:
+        discord_message: "Server {{ inventory_hostname }} ({{ ansible_host }}) has no updates available."
+      when: ansible_os_family == "Debian" and not apt_upgrade.changed
+
+    # Repeat the notification logic for RedHat/CentOS
+    - name: Notify if updates installed (RedHat/CentOS)
+      include_tasks: discord_notify.yml
+      vars:
+        discord_message: "Server {{ inventory_hostname }} ({{ ansible_host }}) updated successfully."
+      when: ansible_os_family == "RedHat" and yum_upgrade.changed
+
+    - name: Notify if no updates installed/available (RedHat/CentOS)
+      include_tasks: discord_notify.yml
+      vars:
+        discord_message: "Server {{ inventory_hostname }} ({{ ansible_host }}) has no updates available."
+      when: ansible_os_family == "RedHat" and not yum_upgrade.changed
