@@ -1,0 +1,35 @@
+---
+- name: Check All Mounted Filesystems and Notify on Discord
+  hosts: all
+  become: yes
+  vars:
+    disk_space_issue: false
+  tasks:
+    - name: Get filesystem usage
+      ansible.builtin.shell: df -P | awk 'NR>1 {print $1, $5}' | sed 's/%//g'
+      register: filesystems
+
+    - name: Check each filesystem
+      ansible.builtin.command: echo "{{ item }}"
+      loop: "{{ filesystems.stdout_lines }}"
+      register: disk_check
+      changed_when: false
+
+    - name: Set flag if any filesystem is over 80%
+      set_fact:
+        disk_space_issue: true
+      loop: "{{ disk_check.results }}"
+      when: item.stdout.split(' ')[1] | int >= 80
+
+    - name: Include Discord notification task for filesystems over 80%
+      include_tasks: discord_notify.yml
+      vars:
+        discord_message: "Warning: Filesystem {{ item.stdout.split(' ')[0] }} on server {{ inventory_hostname }} ({{ ansible_host }}) is at {{ item.stdout.split(' ')[1] }}% capacity."
+      loop: "{{ disk_check.results }}"
+      when: item.stdout.split(' ')[1] | int >= 80
+
+    - name: Include Discord notification task if all filesystems are good
+      include_tasks: discord_notify.yml
+      vars:
+        discord_message: "Diskspace on {{ inventory_hostname }} ({{ ansible_host }}) is all good."
+      when: not disk_space_issue
