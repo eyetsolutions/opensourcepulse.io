@@ -1,0 +1,24 @@
+---
+- name: List All Servers from AWX Inventory
+  hosts: localhost
+  gather_facts: no
+
+  tasks:
+    - name: Initialize an empty string for server groups
+      set_fact:
+        server_groups_message: ""
+
+    - name: Append servers of each group to the message
+      set_fact:
+        server_groups_message: "{{ server_groups_message }}\n{{ item }}:\n{{ groups[item] | join('\n') }}"
+      loop: "{{ groups.keys() }}"
+      when: item != 'ungrouped' and item != 'all'
+
+    - name: Format message for Discord
+      set_fact:
+        formatted_discord_message: "{{ server_groups_message | replace('\n', '\\n') }}"
+
+    - name: Send all server groups list to Discord
+      include_tasks: discord_notify.yml
+      vars:
+        discord_message: "{{ formatted_discord_message }}"
