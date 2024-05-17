@@ -1,4 +1,5 @@
 # Change IPs to match your servers
+# Change name *_server* to match yours
 [infra_servers]
 infra_server1 ansible_host=192.168.1.20
 infra_server2 ansible_host=192.168.1.21
