@@ -1,0 +1,24 @@
+---
+- name: Gather Server Stats
+  hosts: "{{ hostnames }}"
+  become: yes
+
+  tasks:
+    - name: Gather system facts
+      ansible.builtin.setup:
+
+    - name: Get CPU load
+      command: uptime
+      register: uptime_output
+
+    - set_fact:
+        discord_message: |
+          Stats for Server {{ inventory_hostname }} ({{ ansible_host }}):\n- CPU Load: {{ uptime_output.stdout.split() | last }}\n- Total Memory: {{ ansible_memtotal_mb }} MB\n- Memory Free: {{ ansible_memory_mb.real.free }} MB\n- Memory Used: {{ ansible_memory_mb.real.used }} MB\n- Disk Free: {{ ansible_mounts[0].size_available | int / 1024 / 1024 }} GB\n- Disk Total: {{ ansible_mounts[0].size_total | int / 1024 / 1024 }} GB\n- Number of CPUs: {{ ansible_processor_vcpus }}\n- Operating System: {{ ansible_distribution }} {{ ansible_distribution_version }}\n- Hostname: {{ ansible_hostname }}\n- Network IP: {{ ansible_default_ipv4.address }}
+
+    - set_fact:
+        formatted_discord_message: "{{ discord_message | replace('\n', '\\n') }}"
+
+    - name: Send stats to Discord
+      include_tasks: discord_notify.yml
+      vars:
+        discord_message: "{{ formatted_discord_message }}"
